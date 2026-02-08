@@ -44,7 +44,8 @@ nvm-inventory/
 ├── vendor/                    # Composer autoloader
 ├── composer.json
 ├── phpunit.xml
-└── phpstan.neon
+├── phpstan.neon
+└── build.sh                   # Production build script (creates dist/)
 ```
 
 ---
@@ -480,4 +481,86 @@ $filtered = apply_filters( 'nvm/inventory/api_response', $response );
 
 // Services via DI container.
 $stock_service = Plugin::instance()->get_service( Services\Stock_Service::class );
+```
+
+---
+
+## Build Script
+
+Create `build.sh` in the plugin root to generate a production-ready distribution folder.
+
+```bash
+#!/bin/bash
+#
+# Build script for NVM Inventory plugin.
+# Creates a clean dist/ folder with only production files.
+#
+
+set -e
+
+PLUGIN_SLUG="nvm-inventory"
+BUILD_DIR="dist"
+PLUGIN_DIR="${BUILD_DIR}/${PLUGIN_SLUG}"
+
+echo "Building ${PLUGIN_SLUG}..."
+
+# Clean previous build.
+rm -rf "${BUILD_DIR}"
+mkdir -p "${PLUGIN_DIR}"
+
+# Copy production files.
+cp -r src "${PLUGIN_DIR}/"
+cp -r assets "${PLUGIN_DIR}/"
+cp -r templates "${PLUGIN_DIR}/" 2>/dev/null || true
+cp -r languages "${PLUGIN_DIR}/" 2>/dev/null || true
+cp "${PLUGIN_SLUG}.php" "${PLUGIN_DIR}/"
+cp composer.json "${PLUGIN_DIR}/"
+cp composer.lock "${PLUGIN_DIR}/" 2>/dev/null || true
+
+# Install production dependencies only.
+cd "${PLUGIN_DIR}"
+composer install --no-dev --optimize-autoloader --classmap-authoritative --quiet
+rm -f composer.json composer.lock
+cd - > /dev/null
+
+# Create zip archive.
+cd "${BUILD_DIR}"
+zip -rq "${PLUGIN_SLUG}.zip" "${PLUGIN_SLUG}"
+cd - > /dev/null
+
+echo "Build complete: ${BUILD_DIR}/${PLUGIN_SLUG}.zip"
+```
+
+Make it executable:
+
+```bash
+chmod +x build.sh
+```
+
+### What Gets Excluded
+
+The script explicitly copies only production files, automatically excluding:
+
+- `tests/` — Unit and integration tests
+- `phpunit.xml` — PHPUnit configuration
+- `phpstan.neon` — Static analysis configuration
+- `.git/` — Version control
+- `.github/` — GitHub workflows
+- `node_modules/` — Node dependencies
+- `.env` — Environment files
+- `build.sh` — The build script itself
+- Dev dependencies in `vendor/`
+
+### Directory Structure After Build
+
+```
+dist/
+├── nvm-inventory/
+│   ├── nvm-inventory.php
+│   ├── src/
+│   ├── assets/
+│   ├── templates/
+│   ├── languages/
+│   └── vendor/          # Production dependencies only
+└── nvm-inventory.zip    # Ready to upload
 ```

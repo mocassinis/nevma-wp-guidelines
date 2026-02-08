@@ -99,6 +99,8 @@
 
 | Check | Verify |
 |-------|--------|
-| Build Command | `composer build` works |
-| No Dev Dependencies | Production has no dev packages |
-| Excluded | `tests/`, `phpunit.xml`, `phpstan.neon`, `.git/` not in build |
+| Build Script | `build.sh` exists and is executable (`chmod +x build.sh`) |
+| Build Command | `./build.sh` creates `dist/` folder with plugin zip |
+| No Dev Dependencies | Production `vendor/` has no dev packages |
+| Excluded | `tests/`, `phpunit.xml`, `phpstan.neon`, `.git/`, `node_modules/` not in build |
+| Zip Created | `dist/{plugin-slug}.zip` ready for upload |

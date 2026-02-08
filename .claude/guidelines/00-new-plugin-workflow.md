@@ -52,7 +52,8 @@ nvm-{plugin-name}/
 ├── languages/
 ├── composer.json
 ├── phpunit.xml
-└── phpstan.neon
+├── phpstan.neon
+└── build.sh
 ```
 
 ---
@@ -294,8 +295,8 @@ composer test
 # Run static analysis
 composer analyse
 
-# Build for production
-composer build
+# Build for production (creates dist/ folder with zip)
+./build.sh
 ```
 
 ---
@@ -315,3 +316,4 @@ composer build
 | 9 | `tests/Unit_Test_Case.php` | `09-testing.md` |
 | 10 | `phpunit.xml` | `09-testing.md` |
 | 11 | `phpstan.neon` | `10-static-analysis.md` |
+| 12 | `build.sh` | `02-architecture.md` |

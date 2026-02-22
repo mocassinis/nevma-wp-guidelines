@@ -19,6 +19,7 @@ Quick reference for which guideline to load based on your task.
 | **Admin JavaScript** | `07-javascript.md` (jQuery section) |
 | **Writing tests** | `09-testing.md` |
 | **Setting up PHPStan** | `10-static-analysis.md` |
+| **Automation & Scoping** | `13-automation-tooling.md` |
 | **Pre-commit review** | `11-checklist.md` |
 
 ## By File Count
@@ -37,6 +38,8 @@ Quick reference for which guideline to load based on your task.
 | `09-testing.md` | ~550 | PHPUnit setup, test patterns, Brain Monkey |
 | `10-static-analysis.md` | ~50 | PHPStan configuration |
 | `11-checklist.md` | ~60 | Pre-generation verification |
+| `12-advanced-patterns.md` | ~200 | DTOs, Value Objects, RBAC, Middleware |
+| `13-automation-tooling.md` | ~100 | Composer scoping (PHP-Scoper), phpcbf, Prettier |
 
 ## Common Combinations
 

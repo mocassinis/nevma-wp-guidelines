@@ -45,7 +45,8 @@ nvm-inventory/
 ├── composer.json
 ├── phpunit.xml
 ├── phpstan.neon
-└── build.sh                   # Production build script (creates dist/)
+├── build.sh                   # Production build script (Mac/Linux)
+└── build.ps1                  # Production build script (Windows)
 ```
 
 ---
@@ -531,11 +532,64 @@ cd - > /dev/null
 echo "Build complete: ${BUILD_DIR}/${PLUGIN_SLUG}.zip"
 ```
 
-Make it executable:
+Make it executable (Mac/Linux):
 
 ```bash
 chmod +x build.sh
 ```
+
+### build.ps1 (Windows)
+
+Create `build.ps1` for native Windows support:
+
+```powershell
+#
+# Build script for NVM Inventory plugin (Windows).
+# Creates a clean dist/ folder with only production files.
+#
+
+$ErrorActionPreference = "Stop"
+
+$PLUGIN_SLUG = "nvm-inventory"
+$BUILD_DIR = "dist"
+$PLUGIN_DIR = "$BUILD_DIR\$PLUGIN_SLUG"
+
+Write-Host "Building $PLUGIN_SLUG..."
+
+# Clean previous build.
+if (Test-Path $BUILD_DIR) {
+    Remove-Item -Recurse -Force $BUILD_DIR
+}
+New-Item -ItemType Directory -Path $PLUGIN_DIR -Force | Out-Null
+
+# Copy production files.
+Copy-Item -Recurse "src" "$PLUGIN_DIR\"
+Copy-Item -Recurse "assets" "$PLUGIN_DIR\"
+if (Test-Path "templates") { Copy-Item -Recurse "templates" "$PLUGIN_DIR\" }
+if (Test-Path "languages") { Copy-Item -Recurse "languages" "$PLUGIN_DIR\" }
+Copy-Item "$PLUGIN_SLUG.php" "$PLUGIN_DIR\"
+Copy-Item "composer.json" "$PLUGIN_DIR\"
+if (Test-Path "composer.lock") { Copy-Item "composer.lock" "$PLUGIN_DIR\" }
+
+# Install production dependencies only.
+Push-Location $PLUGIN_DIR
+composer install --no-dev --optimize-autoloader --classmap-authoritative --quiet
+Remove-Item -Force "composer.json", "composer.lock" -ErrorAction SilentlyContinue
+Pop-Location
+
+# Create zip archive.
+Compress-Archive -Path "$PLUGIN_DIR" -DestinationPath "$BUILD_DIR\$PLUGIN_SLUG.zip" -Force
+
+Write-Host "Build complete: $BUILD_DIR\$PLUGIN_SLUG.zip"
+```
+
+Run from PowerShell:
+
+```powershell
+.\build.ps1
+```
+
+> **Note:** If you get an execution policy error, run: `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
 
 ### What Gets Excluded
 
@@ -548,7 +602,8 @@ The script explicitly copies only production files, automatically excluding:
 - `.github/` — GitHub workflows
 - `node_modules/` — Node dependencies
 - `.env` — Environment files
-- `build.sh` — The build script itself
+- `build.sh` — The build script itself (Mac/Linux)
+- `build.ps1` — The build script itself (Windows)
 - Dev dependencies in `vendor/`
 
 ### Directory Structure After Build

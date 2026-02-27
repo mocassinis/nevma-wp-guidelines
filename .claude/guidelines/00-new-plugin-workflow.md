@@ -53,7 +53,8 @@ nvm-{plugin-name}/
 ├── composer.json
 ├── phpunit.xml
 ├── phpstan.neon
-└── build.sh
+├── build.sh
+└── build.ps1
 ```
 
 ---
@@ -317,3 +318,4 @@ composer analyse
 | 10 | `phpunit.xml` | `09-testing.md` |
 | 11 | `phpstan.neon` | `10-static-analysis.md` |
 | 12 | `build.sh` | `02-architecture.md` |
+| 13 | `build.ps1` | `02-architecture.md` |

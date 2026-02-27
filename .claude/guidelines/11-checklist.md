@@ -99,8 +99,9 @@
 
 | Check | Verify |
 |-------|--------|
-| Build Script | `build.sh` exists and is executable (`chmod +x build.sh`) |
-| Build Command | `./build.sh` creates `dist/` folder with plugin zip |
+| Build Script (Mac/Linux) | `build.sh` exists and is executable (`chmod +x build.sh`) |
+| Build Script (Windows) | `build.ps1` exists for native Windows support |
+| Build Command | `./build.sh` or `.\build.ps1` creates `dist/` folder with plugin zip |
 | No Dev Dependencies | Production `vendor/` has no dev packages |
 | Excluded | `tests/`, `phpunit.xml`, `phpstan.neon`, `.git/`, `node_modules/` not in build |
 | Zip Created | `dist/{plugin-slug}.zip` ready for upload |

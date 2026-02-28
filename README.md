@@ -1,8 +1,22 @@
-# AI Guidelines
+# Nevma WordPress/WooCommerce Guidelines for Claude
 
-Modular WordPress/WooCommerce coding guidelines for Claude AI.
+**Production-grade coding standards for Claude Code — AI-assisted WordPress & WooCommerce development.**
 
-## Why Modular?
+Created by [nevma](https://nevma.gr) — a digital agency specializing in WordPress, WooCommerce, and custom web solutions.
+
+## What Is This?
+
+A set of modular guidelines that Claude Code reads automatically when working on WordPress/WooCommerce projects. Instead of explaining your coding standards every time, Claude follows these rules by default.
+
+### Built for Claude Code
+
+These guidelines are designed specifically for [Claude Code](https://claude.ai/claude-code):
+
+- **Modular loading** — Claude loads only what's needed per task
+- **Specialized agents** — Security, performance, and testing agents trigger automatically
+- **Structured workflows** — 13-step plugin creation, pre-commit checklists
+
+### Modular Loading
 
 Instead of loading 2000+ lines every time, Claude loads only what's needed:
 
@@ -19,25 +33,23 @@ Instead of loading 2000+ lines every time, Claude loads only what's needed:
 Keeps guidelines synced across projects.
 
 ```bash
-# First time: clone the setup script locally
-git clone git@github.com:mocassinis/ai-guidelines.git ~/.ai-guidelines
+# First time: clone locally
+git clone git@github.com:mocassinis/nevma-wp-guidelines.git ~/.nevma-wp-guidelines
 
 # Run on any project
-~/.ai-guidelines/setup.sh /path/to/your-project
+~/.nevma-wp-guidelines/setup.sh /path/to/your-project
 cd /path/to/your-project
-git commit -m "Add AI guidelines submodule"
+git commit -m "Add nevma-wp-guidelines submodule"
 ```
 
 ### Option 2: Manual Submodule
 
-Without using the setup script:
-
 ```bash
 cd /path/to/your-project
-git submodule add git@github.com:mocassinis/ai-guidelines.git .claude-guidelines
+git submodule add git@github.com:mocassinis/nevma-wp-guidelines.git .claude-guidelines
 ln -s .claude-guidelines/.claude .claude
 git add .claude
-git commit -m "Add AI guidelines submodule"
+git commit -m "Add nevma-wp-guidelines submodule"
 ```
 
 ### Option 3: Copy
@@ -45,16 +57,16 @@ git commit -m "Add AI guidelines submodule"
 One-time copy, no sync.
 
 ```bash
-git clone git@github.com:mocassinis/ai-guidelines.git /tmp/ai-guidelines
-cp -r /tmp/ai-guidelines/.claude /path/to/your-project/
-rm -rf /tmp/ai-guidelines
+git clone git@github.com:mocassinis/nevma-wp-guidelines.git /tmp/nevma-wp-guidelines
+cp -r /tmp/nevma-wp-guidelines/.claude /path/to/your-project/
+rm -rf /tmp/nevma-wp-guidelines
 ```
 
 ## Structure
 
 ```
 .claude/
-├── CLAUDE.md                      # Entry point (always loaded)
+├── CLAUDE.md                      # Entry point (Claude reads this first)
 └── guidelines/
     ├── index.md                   # Task → file mapping
     ├── 00-new-plugin-workflow.md  # Step-by-step new plugin guide
@@ -66,14 +78,16 @@ rm -rf /tmp/ai-guidelines
     ├── 06-performance.md          # Caching, Action Scheduler
     ├── 07-javascript.md           # Vanilla JS, jQuery admin
     ├── 08-documentation.md        # PHPDoc standards
-    ├── 09-testing.md              # PHPUnit, Brain Monkey
+    ├── 09-testing.md              # PHPUnit, Brain Monkey, TDD
     ├── 10-static-analysis.md      # PHPStan configuration
-    └── 11-checklist.md            # Pre-commit verification
+    ├── 11-checklist.md            # Pre-commit verification
+    ├── 12-advanced-patterns.md    # DTOs, RBAC, CLI, middleware
+    └── 13-automation-tooling.md   # PHP-Scoper, auto-fixers
 ```
 
 ## Usage
 
-Claude reads `CLAUDE.md` automatically and loads specific guidelines as needed.
+Claude reads `CLAUDE.md` automatically when you open a project with these guidelines.
 
 ### Creating a New Plugin
 
@@ -82,7 +96,7 @@ Tell Claude:
 
 Claude will read `00-new-plugin-workflow.md` and follow the 13-step process.
 
-### Specific Tasks
+### Task Reference
 
 | Task | Claude Reads |
 |------|--------------|
@@ -93,7 +107,29 @@ Claude will read `00-new-plugin-workflow.md` and follow the 13-step process.
 | Caching/async | `06-performance.md` |
 | JavaScript | `07-javascript.md` |
 | Writing tests | `09-testing.md` |
+| Advanced patterns | `12-advanced-patterns.md` |
 | Before commit | `11-checklist.md` |
+
+## Specialized Agents
+
+Three Claude agents automatically review code:
+
+| Agent | Triggers On | Reviews |
+|-------|-------------|---------|
+| Security Auditor | AJAX, REST, forms, SQL | Nonces, capabilities, sanitization |
+| Performance Optimizer | DB queries, loops, reports | Caching, batching, Action Scheduler |
+| Unit Test Writer | Services, handlers | PHPUnit + Brain Monkey patterns |
+
+## Standards Covered
+
+- PHP 8.0+ with `declare(strict_types=1)`
+- WordPress Coding Standards (WPCS)
+- WooCommerce HPOS compatibility
+- Security (sanitization, escaping, nonces, capabilities)
+- Performance (caching, Action Scheduler, query limits)
+- Testing (PHPUnit + Brain Monkey + TDD)
+- Static analysis (PHPStan level 6+)
+- Dependency scoping (PHP-Scoper)
 
 ## Updating
 
@@ -104,19 +140,17 @@ cd .claude-guidelines
 git pull origin main
 cd ..
 git add .claude-guidelines
-git commit -m "Update AI guidelines"
+git commit -m "Update nevma-wp-guidelines"
 ```
 
-## Standards Covered
+## About Nevma
 
-- PHP 8.0+ with strict typing
-- WordPress Coding Standards
-- WooCommerce HPOS compatibility
-- Security (sanitization, escaping, nonces, capabilities)
-- Performance (caching, Action Scheduler, query optimization)
-- Testing (PHPUnit + Brain Monkey)
-- Static analysis (PHPStan level 6+)
+[Nevma](https://nevma.gr) is a digital agency based in Athens, Greece, with 15+ years of experience building WordPress and WooCommerce solutions.
 
-## Author
+**Services:**
+- Custom WordPress plugin development
+- WooCommerce store optimization
+- Enterprise WordPress solutions
+- Performance audits
 
-[nevma](https://nevma.gr)
+**Contact:** [nevma.gr](https://nevma.gr)

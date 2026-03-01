@@ -157,4 +157,4 @@ git commit -m "Update nevma-wp-guidelines"
 
 ## Contributors
 
-- [Ioannis Kastorinis](https://github.com/mocassinis)
+- [Ioannis Kastorinis](https://github.com/mocassinis) — [themoca.eu](https://www.themoca.eu/)

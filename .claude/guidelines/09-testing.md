@@ -88,6 +88,91 @@ public function apply_discount( float $price, float $percent ): float {
 
 ---
 
+## Bug Fix Workflow (Test-First)
+
+**Never fix a bug directly. Always write a failing test first.**
+
+### The Bug Fix Cycle
+
+```
+1. REPRODUCE → Write a test that reproduces the bug (test fails)
+2. VERIFY    → Run the test to confirm it fails for the right reason
+3. FIX       → Write the minimum code to fix the bug
+4. CONFIRM   → Run the test to confirm it passes
+5. REVIEW    → Check for related edge cases, add more tests if needed
+```
+
+### Why Test-First for Bugs?
+
+- **Proves the bug exists** — The failing test documents the exact issue
+- **Prevents regression** — The test ensures the bug never returns
+- **Defines "fixed"** — Clear success criteria for the fix
+- **Documents behavior** — Future developers understand what went wrong
+
+### Example: Bug Fix Workflow
+
+**Bug Report:** "Discount calculator returns wrong value for 100% discount"
+
+**Step 1: Write the failing test**
+
+```php
+public function test_apply_discount_with_100_percent_returns_zero(): void {
+    $calculator = new Price_Calculator();
+
+    $result = $calculator->apply_discount( 50.00, 100.0 );
+
+    $this->assertSame( 0.00, $result ); // Bug: currently returns -50.00
+}
+```
+
+**Step 2: Run test — it fails** (confirms the bug exists)
+
+```
+FAILED: Expected 0.00, got -50.00
+```
+
+**Step 3: Fix the bug**
+
+```php
+public function apply_discount( float $price, float $percent ): float {
+    if ( $percent >= 100.0 ) {
+        return 0.00; // Fix: cap at zero
+    }
+
+    return $price - ( $price * $percent / 100 );
+}
+```
+
+**Step 4: Run test — it passes**
+
+**Step 5: Add related edge cases**
+
+```php
+public function test_apply_discount_over_100_percent_returns_zero(): void {
+    $calculator = new Price_Calculator();
+
+    $result = $calculator->apply_discount( 50.00, 150.0 );
+
+    $this->assertSame( 0.00, $result );
+}
+```
+
+### Bug Fix Test Naming
+
+Use descriptive names that document the bug:
+
+```
+test_{method}_bug_{issue_number}_{description}
+test_{method}_{scenario_that_caused_bug}
+```
+
+Examples:
+- `test_apply_discount_bug_123_100_percent_returns_zero()`
+- `test_calculate_total_with_empty_cart_returns_zero()`
+- `test_sync_handles_deleted_product_gracefully()`
+
+---
+
 ## Directory Structure
 
 ```

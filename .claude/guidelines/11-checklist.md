@@ -90,6 +90,7 @@
 | PHPStan | Level 6+ passes with no ignored errors |
 | Tests Exist | Unit tests for services, AJAX, REST, enums |
 | Tests Pass | All tests pass |
+| Bug Fixes | Every bug fix has a failing test written BEFORE the fix |
 | Edge Cases | Zero, negative, null, empty, max, UTF-8, duplicates covered |
 | Dependencies | WooCommerce version check with admin notice fallback |
 

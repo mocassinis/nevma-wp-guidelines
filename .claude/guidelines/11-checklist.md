@@ -83,16 +83,39 @@
 
 ---
 
-## Quality
+## Quality & Testing (Mandatory)
 
-| Check | Verify |
-|-------|--------|
-| PHPStan | Level 6+ passes with no ignored errors |
-| Tests Exist | Unit tests for services, AJAX, REST, enums |
-| Tests Pass | All tests pass |
-| Bug Fixes | Every bug fix has a failing test written BEFORE the fix |
-| Edge Cases | Zero, negative, null, empty, max, UTF-8, duplicates covered |
-| Dependencies | WooCommerce version check with admin notice fallback |
+**All tests must be executed and passing before commit. No exceptions.**
+
+| Check | Command | Verify |
+|-------|---------|--------|
+| Unit Tests Run | `composer test` | All unit tests pass (exit code 0) |
+| Unit Tests Exist | — | Every service, handler, controller, enum has tests |
+| E2E Tests Run | `npm run test:e2e` | All Playwright tests pass (if E2E tests exist) |
+| E2E Tests Exist | — | Shopper flows, merchant flows, API endpoints covered |
+| PHPStan | `vendor/bin/phpstan analyse` | Level 6+ passes with no ignored errors |
+| Bug Fixes | — | Every bug fix has a failing test written BEFORE the fix |
+| Edge Cases | — | Zero, negative, null, empty, max, UTF-8, duplicates covered |
+| Dependencies | — | WooCommerce version check with admin notice fallback |
+
+### Test Execution Order
+
+```bash
+# 1. Unit tests (fast, run first)
+composer test
+
+# 2. Static analysis
+vendor/bin/phpstan analyse
+
+# 3. E2E tests (slower, run last — ask user first)
+npm run test:e2e
+```
+
+### If Tests Fail
+
+- **Do not commit.** Fix the failing test first.
+- If a test fails unexpectedly, investigate the root cause — don't just skip or delete the test.
+- If E2E tests fail due to environment issues, notify the user and document the issue.
 
 ---
 

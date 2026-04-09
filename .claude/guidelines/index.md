@@ -34,13 +34,13 @@ Quick reference for which guideline to load based on your task.
 | `02-architecture.md` | ~400 | Directory structure, Plugin class, composer.json |
 | `03-modern-php.md` | ~180 | PHP 8.0/8.1/8.2 features, strict typing |
 | `04-security.md` | ~350 | Input/output, nonces, AJAX, REST, SQL |
-| `05-woocommerce.md` | ~90 | CRUD, HPOS, block checkout, logging |
-| `06-performance.md` | ~150 | Caching, Action Scheduler, query optimization |
+| `05-woocommerce.md` | ~570 | CRUD, HPOS, block checkout, payment gateways, shipping, emails, logging |
+| `06-performance.md` | ~410 | Caching, Action Scheduler, query optimization, WooCommerce performance |
 | `07-javascript.md` | ~180 | Vanilla JS, jQuery admin, data passing |
 | `08-documentation.md` | ~40 | PHPDoc standards |
 | `09-testing.md` | ~550 | PHPUnit setup, test patterns, Brain Monkey |
 | `10-static-analysis.md` | ~50 | PHPStan configuration |
-| `11-checklist.md` | ~60 | Pre-generation verification |
+| `11-checklist.md` | ~130 | Pre-generation verification with mandatory test execution |
 | `12-advanced-patterns.md` | ~200 | DTOs, Value Objects, RBAC, Middleware |
 | `13-automation-tooling.md` | ~100 | Composer scoping (PHP-Scoper), phpcbf, Prettier |
 | `14-e2e-testing.md` | ~450 | Playwright E2E testing for WooCommerce |

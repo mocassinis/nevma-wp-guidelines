@@ -23,7 +23,8 @@ Instead of loading 2000+ lines every time, Claude loads only what's needed:
 | Task | Lines Loaded |
 |------|--------------|
 | Writing AJAX handler | ~390 (security only) |
-| Adding caching | ~160 (performance only) |
+| WooCommerce integration | ~570 (WooCommerce only) |
+| Adding caching | ~410 (performance only) |
 | New plugin setup | ~320 (workflow only) |
 
 ## Installation
@@ -74,8 +75,8 @@ rm -rf /tmp/nevma-wp-guidelines
     ├── 02-architecture.md         # Directory structure, Plugin class
     ├── 03-modern-php.md           # PHP 8.0/8.1/8.2 features
     ├── 04-security.md             # AJAX, REST, nonces, SQL
-    ├── 05-woocommerce.md          # CRUD, HPOS, block checkout
-    ├── 06-performance.md          # Caching, Action Scheduler
+    ├── 05-woocommerce.md          # CRUD, HPOS, gateways, shipping, emails
+    ├── 06-performance.md          # Caching, Action Scheduler, WC perf
     ├── 07-javascript.md           # Vanilla JS, jQuery admin
     ├── 08-documentation.md        # PHPDoc standards
     ├── 09-testing.md              # PHPUnit, Brain Monkey, TDD
@@ -115,6 +116,20 @@ Claude will read `00-new-plugin-workflow.md` and follow the 13-step process.
 | Block interactivity | `15-interactivity-api.md` |
 | Local testing | `16-playground.md` |
 | Before commit | `11-checklist.md` |
+
+## Mandatory Testing
+
+Every plugin built with these guidelines enforces testing before commit:
+
+| Test Type | Tool | When |
+|-----------|------|------|
+| Unit Tests | PHPUnit + Brain Monkey | After writing/modifying any business logic |
+| E2E Tests | Playwright | After completing user-facing features |
+| Static Analysis | PHPStan level 6+ | Before every commit |
+
+```
+Write Code → Unit Tests → PHPStan → E2E Tests → Security Audit → Performance Review → Commit
+```
 
 ## Specialized Agents
 

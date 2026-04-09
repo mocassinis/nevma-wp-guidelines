@@ -30,6 +30,50 @@ Before starting any task, read the relevant guideline from `.claude/guidelines/`
 - **Hooks**: `nvm/{plugin-slug}/` prefix
 - **Security**: Sanitize input, escape output, verify nonces, check capabilities
 - **No jQuery on frontend** - use vanilla JS with `fetch()`
+- **Performance first**: Always set query limits, cache expensive operations, use Action Scheduler for heavy tasks (see `06-performance.md`)
+
+## Mandatory Testing (Always Enforce)
+
+**No code is complete until tests pass.** This is non-negotiable.
+
+### Unit Tests (PHPUnit + Brain Monkey)
+
+Run after writing or modifying any service, handler, controller, or business logic:
+
+```bash
+composer test          # All tests
+composer test:unit     # Unit tests only
+```
+
+- Every public method must have tests
+- Every bug fix must start with a failing test (see `09-testing.md`)
+- Tests must cover happy path AND negative/edge cases
+- **Do not commit code with failing tests**
+
+### E2E Tests (Playwright)
+
+Run after completing any user-facing feature or checkout/cart/admin flow:
+
+```bash
+npm run test:e2e       # All E2E tests (headless)
+npm run test:e2e:headed # With browser visible
+```
+
+- Shopper flows: checkout, cart, product pages
+- Merchant flows: admin settings, order management
+- API tests: REST endpoint validation
+- **Ask user before running E2E tests** (they modify data in the test environment)
+
+### Test Execution Workflow
+
+```
+Write Code → Run Unit Tests → Run E2E Tests → Security Audit → Performance Review → Commit
+```
+
+**Before any commit or PR:**
+1. `composer test` — all unit tests must pass
+2. `npx playwright test` — all E2E tests must pass (if E2E tests exist)
+3. `vendor/bin/phpstan analyse` — static analysis must pass
 
 ## Specialized Agents (Auto-Triggered)
 

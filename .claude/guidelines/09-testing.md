@@ -1,6 +1,6 @@
 # Testing
 
-> PHPUnit setup, Brain Monkey, test patterns, and coverage requirements.
+> PHPUnit setup, Brain Monkey, test patterns, integration tests (wp-phpunit), coverage enforcement, and mutation testing.
 
 Testing is **mandatory** for all service classes and business logic.
 
@@ -272,6 +272,10 @@ if ( ! defined( 'HOUR_IN_SECONDS' ) ) {
 
 if ( ! defined( 'DAY_IN_SECONDS' ) ) {
 	define( 'DAY_IN_SECONDS', 86400 );
+}
+
+if ( ! defined( 'ARRAY_A' ) ) {
+	define( 'ARRAY_A', 'ARRAY_A' );
 }
 ```
 
@@ -634,6 +638,158 @@ public function test_deactivate_cleans_scheduled_actions(): void {
 }
 ```
 
+### Pattern 11: Testing Filters
+
+Pattern 7 covers actions — filters use `Filters\expectApplied`:
+
+```php
+use Brain\Monkey\Filters;
+
+public function test_low_stock_threshold_filter_is_applied(): void {
+	Filters\expectApplied( 'nvm/inventory/low_stock_threshold' )
+		->once()
+		->with( 5 )
+		->andReturn( 10 );
+
+	Functions\when( 'get_option' )->justReturn( [] );
+
+	$service = new Stock_Service();
+
+	// Filtered value must be used, not the default.
+	$this->assertSame( 10, $service->get_low_stock_threshold() );
+}
+```
+
+### Pattern 12: Mocking HTTP Calls
+
+Never let unit tests hit the network. Test **all three** outcomes: success, `WP_Error` (network failure), and non-2xx response.
+
+```php
+public function test_push_stock_succeeds_on_200(): void {
+	$response = [
+		'response' => [ 'code' => 200 ],
+		'body'     => '{"ok":true}',
+	];
+
+	Functions\expect( 'wp_remote_post' )
+		->once()
+		->with( 'https://api.example.com/stock', \Mockery::type( 'array' ) )
+		->andReturn( $response );
+
+	Functions\when( 'is_wp_error' )->justReturn( false );
+	Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 200 );
+	Functions\when( 'wp_remote_retrieve_body' )->justReturn( '{"ok":true}' );
+
+	$client = new Api_Client();
+
+	$this->assertTrue( $client->push_stock( 123, 50 ) );
+}
+
+public function test_push_stock_handles_network_failure(): void {
+	$error = \Mockery::mock( 'WP_Error' );
+	$error->shouldReceive( 'get_error_message' )->andReturn( 'cURL error 28: timed out' );
+
+	Functions\when( 'wp_remote_post' )->justReturn( $error );
+	Functions\when( 'is_wp_error' )->alias( static fn( $thing ): bool => $thing === $error );
+
+	$client = new Api_Client();
+
+	$this->assertFalse( $client->push_stock( 123, 50 ) );
+}
+
+public function test_push_stock_handles_http_500(): void {
+	Functions\when( 'wp_remote_post' )->justReturn( [ 'response' => [ 'code' => 500 ], 'body' => '' ] );
+	Functions\when( 'is_wp_error' )->justReturn( false );
+	Functions\when( 'wp_remote_retrieve_response_code' )->justReturn( 500 );
+
+	$client = new Api_Client();
+
+	$this->assertFalse( $client->push_stock( 123, 50 ) );
+}
+```
+
+In **integration** tests, short-circuit real requests with the `pre_http_request` filter instead of stubbing functions.
+
+### Pattern 13: Testing Action Scheduler
+
+`06-performance.md` mandates Action Scheduler for heavy work — test the scheduling contract:
+
+```php
+public function test_queues_async_sync_job(): void {
+	Functions\expect( 'as_enqueue_async_action' )
+		->once()
+		->with( 'nvm/inventory/sync_product', [ 'product_id' => 123 ], 'nvm-inventory' );
+
+	$service = new Sync_Service();
+	$service->queue_product_sync( 123 );
+}
+
+public function test_does_not_double_schedule_recurring_job(): void {
+	Functions\when( 'as_next_scheduled_action' )->justReturn( 1735689600 ); // Already scheduled.
+	Functions\expect( 'as_schedule_recurring_action' )->never();
+
+	$service = new Sync_Service();
+	$service->maybe_schedule_daily_sync();
+}
+```
+
+### Pattern 14: Mocking `$wpdb` (Custom Tables)
+
+```php
+public function test_get_log_entries_prepares_query(): void {
+	global $wpdb;
+
+	$wpdb         = \Mockery::mock( 'wpdb' );
+	$wpdb->prefix = 'wp_';
+
+	$wpdb->shouldReceive( 'prepare' )
+		->once()
+		->with( \Mockery::pattern( '/FROM wp_nvm_inventory_log WHERE product_id = %d/' ), 123, 50 )
+		->andReturn( 'prepared-sql' );
+
+	$wpdb->shouldReceive( 'get_results' )
+		->once()
+		->with( 'prepared-sql', ARRAY_A )
+		->andReturn( [ [ 'id' => '1' ] ] );
+
+	$repo = new Log_Repository();
+
+	$this->assertCount( 1, $repo->get_entries( 123 ) );
+}
+```
+
+Requirements: define `ARRAY_A` in `tests/bootstrap.php` (`define( 'ARRAY_A', 'ARRAY_A' );`) and reset `$wpdb = null;` in `tearDown()` so tests stay isolated. Asserting the `prepare()` call **is** the SQL-injection test.
+
+### Pattern 15: Time-Dependent Logic
+
+Never call `time()`/`new \DateTimeImmutable( 'now' )` directly in services — inject a clock so expiry/scheduling logic is deterministic:
+
+```php
+interface Clock {
+	public function now(): int;
+}
+
+final class System_Clock implements Clock {
+	public function now(): int {
+		return time();
+	}
+}
+
+// In the test — frozen clock, no sleep(), no flaky boundaries.
+$frozen = new class() implements Clock {
+	public function now(): int {
+		return 1_700_000_000;
+	}
+};
+
+$service = new Token_Service( $frozen );
+
+$this->assertTrue( $service->is_expired( 1_700_000_000 - HOUR_IN_SECONDS - 1 ) );
+$this->assertFalse( $service->is_expired( 1_700_000_000 - 10 ) );
+```
+
+Brain Monkey cannot stub PHP built-ins like `time()` in the global namespace — the clock interface is the reliable pattern.
+
 ---
 
 ## Negative Path Testing (Mandatory Checklist)
@@ -738,6 +894,185 @@ $this->expectExceptionMessage( 'Specific message' );
 
 ---
 
+## Integration Tests (wp-phpunit)
+
+Everything the table above defers — hook wiring, real CRUD round-trips, `$wpdb` against real tables — belongs in `tests/Integration/` running against a real WordPress + WooCommerce.
+
+### Setup
+
+```bash
+composer require --dev wp-phpunit/wp-phpunit yoast/phpunit-polyfills
+```
+
+Integration tests need MySQL — run them inside wp-env's tests environment (see below), never against a live site.
+
+### tests/bootstrap-integration.php
+
+```php
+<?php
+declare(strict_types=1);
+
+$_tests_dir = getenv( 'WP_TESTS_DIR' ) ?: dirname( __DIR__ ) . '/vendor/wp-phpunit/wp-phpunit';
+
+require_once $_tests_dir . '/includes/functions.php';
+
+// Load WooCommerce and the plugin before the WP test suite boots.
+tests_add_filter( 'muplugins_loaded', static function (): void {
+	require getenv( 'WC_PLUGIN_FILE' ) ?: WP_PLUGIN_DIR . '/woocommerce/woocommerce.php';
+	require dirname( __DIR__ ) . '/nvm-inventory.php';
+} );
+
+require $_tests_dir . '/includes/bootstrap.php';
+```
+
+Use a second phpunit config (`phpunit-integration.xml`) pointing `bootstrap` at this file and the testsuite at `tests/Integration`.
+
+### Integration Test Case Base Class
+
+```php
+<?php
+declare(strict_types=1);
+
+namespace NVM\Inventory\Tests;
+
+abstract class Integration_Test_Case extends \WP_UnitTestCase {
+
+	/**
+	 * Create a real product in the test database (rolled back after each test).
+	 *
+	 * @param array<string, mixed> $props Product properties.
+	 */
+	protected function create_simple_product( array $props = [] ): \WC_Product_Simple {
+		$product = new \WC_Product_Simple();
+		$product->set_name( $props['name'] ?? 'Integration Test Product' );
+		$product->set_regular_price( $props['price'] ?? '19.99' );
+		$product->set_manage_stock( true );
+		$product->set_stock_quantity( $props['stock'] ?? 10 );
+		$product->save();
+
+		return $product;
+	}
+}
+```
+
+`WP_UnitTestCase` wraps every test in a DB transaction and rolls it back — tests stay isolated without manual cleanup.
+
+### Example: Real Round-Trip + Hook Wiring
+
+```php
+public function test_update_stock_persists_and_fires_hook(): void {
+	$product = $this->create_simple_product( [ 'stock' => 10 ] );
+	$fired   = did_action( 'nvm/inventory/stock_updated' );
+
+	( new Stock_Service() )->update_stock( $product->get_id(), 50 );
+
+	// Re-read from the database — not the in-memory object.
+	$this->assertSame( 50, wc_get_product( $product->get_id() )->get_stock_quantity() );
+	$this->assertSame( $fired + 1, did_action( 'nvm/inventory/stock_updated' ) );
+}
+```
+
+### Running
+
+```bash
+npx wp-env start
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/nvm-inventory \
+    vendor/bin/phpunit -c phpunit-integration.xml
+```
+
+### What Belongs Where
+
+| Test type | Speed | Use for |
+|-----------|-------|---------|
+| Unit (Brain Monkey) | ms | Business logic, calculations, branches, error paths |
+| Integration (wp-phpunit) | seconds | Hook wiring, CRUD round-trips, `$wpdb` schema/queries, meta persistence |
+| E2E (Playwright) | minutes | User-visible flows only (see `14-e2e-testing.md`) |
+
+Don't duplicate: a branch tested at unit level does not need an integration test — integration tests verify the *wiring*, not the logic again.
+
+---
+
+## Coverage Enforcement
+
+An HTML report nobody reads is not a gate. Enforce a threshold in CI:
+
+```bash
+composer require --dev rregeer/phpunit-coverage-check
+```
+
+```json
+{
+	"scripts": {
+		"test:coverage": "XDEBUG_MODE=coverage phpunit --testsuite unit --coverage-html coverage --coverage-clover coverage.xml",
+		"coverage:check": "coverage-check coverage.xml 80"
+	}
+}
+```
+
+Rules:
+
+- **80% line coverage minimum on `src/Services/`** (business logic). Glue code (Plugin class, hook registration) is exempt — it's integration-test territory.
+- The threshold may only go **up** as the project matures.
+- **Coverage ≠ correctness.** A line executed by a test with a weak assertion counts as covered. That gap is what mutation testing measures — see next section.
+
+---
+
+## Mutation Testing (Infection)
+
+Infection mutates the code (`>=` → `>`, `+` → `-`, removes method calls) and re-runs the tests. A mutant that survives means behavior no test asserts — the true measure of test quality, beyond coverage.
+
+```bash
+composer require --dev infection/infection
+```
+
+### infection.json5
+
+```json5
+{
+	"$schema": "vendor/infection/infection/resources/schema.json",
+	"source": {
+		"directories": [ "src/Services" ]   // Scope to business logic — keeps runs fast.
+	},
+	"timeout": 10,
+	"logs": {
+		"text": "infection.log"
+	},
+	"mutators": {
+		"@default": true
+	},
+	"minMsi": 70,
+	"minCoveredMsi": 80
+}
+```
+
+### Running
+
+```bash
+XDEBUG_MODE=coverage vendor/bin/infection --threads=max --show-mutations
+```
+
+- **MSI ≥ 70** (all code in scope) and **covered MSI ≥ 80** (code that has tests must have *meaningful* tests) — CI fails below either.
+- A surviving mutant = missing assertion. Read `infection.log`, add the test, don't lower the threshold.
+- Run on services only; mutating hook-registration glue produces noise, not signal.
+
+---
+
+## Test Anti-Patterns
+
+| Anti-pattern | Symptom | Fix |
+|--------------|---------|-----|
+| **Over-mocking** | Test breaks on every refactor but passes when real code is broken | Mock only true boundaries (WP functions, HTTP, DB) — never the class under test or its value objects |
+| **Testing the mock** | All assertions check what the mock returned | Assert on the *system under test's* output/behavior |
+| **Implementation-detail assertions** | `->once()` / exact call-order expectations on incidental internals | Use `Functions\when()` (stub) unless the call *is* the contract (e.g. `set_transient`, `as_enqueue_async_action`) |
+| **Assertion-free tests** | Test passes because nothing is checked | `beStrictAboutTestsThatDoNotTestAnything` (already in phpunit.xml) + code review |
+| **Shared state** | Tests pass alone, fail in suite (or vice versa) | No static state between tests; reset globals (`$wpdb`) in `tearDown()` |
+| **Logic in tests** | `if`/`foreach`/`try-catch` inside a test body | Split scenarios into data providers; let exceptions bubble to `expectException` |
+| **Sleeping** | `sleep()`/`usleep()` for timing behavior | Inject a clock (Pattern 15) |
+
+Rule of thumb: `Functions\expect()` for **outbound contracts** (cache writes, scheduling, hooks fired), `Functions\when()` for **ambient environment** (options, escaping, current user). If reversing them wouldn't change what the test proves, the expectation is noise.
+
+---
+
 ## Running Tests
 
 ```bash
@@ -759,6 +1094,14 @@ composer test:integration
 # Run specific test class.
 ./vendor/bin/phpunit --filter Price_CalculatorTest
 
-# Run with code coverage.
+# Run with code coverage + enforce threshold.
 composer test:coverage
+composer coverage:check
+
+# Run mutation testing.
+XDEBUG_MODE=coverage vendor/bin/infection --threads=max
+
+# Run integration tests inside wp-env.
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/nvm-inventory \
+    vendor/bin/phpunit -c phpunit-integration.xml
 ```

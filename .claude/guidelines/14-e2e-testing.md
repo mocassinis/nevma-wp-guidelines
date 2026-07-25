@@ -523,6 +523,140 @@ test.describe('Products API', () => {
 });
 ```
 
+### Store API Tests (Block Checkout Path)
+
+Block cart/checkout goes through `/wc/store/v1` — not `/wc/v3`. This is the API that exercises `woocommerce_store_api_*` hooks, ExtendSchema data, and Additional Checkout Fields (see `05-woocommerce.md`), so plugin checkout extensions must be tested here:
+
+```typescript
+// tests/e2e/tests/api/store-checkout.spec.ts
+import { test, expect } from '@playwright/test';
+
+test.describe('Store API Checkout', () => {
+  const baseURL = process.env.BASE_URL || 'http://localhost:8889';
+
+  test('cart → checkout flow', async ({ request }) => {
+    // The Store API is cookie/nonce based — the first cart response returns the nonce.
+    const cartRes = await request.get(`${baseURL}/wp-json/wc/store/v1/cart`);
+    const nonce = cartRes.headers()['nonce'];
+
+    const addRes = await request.post(`${baseURL}/wp-json/wc/store/v1/cart/add-item`, {
+      headers: { Nonce: nonce },
+      data: { id: Number(process.env.TEST_PRODUCT_ID), quantity: 1 },
+    });
+    expect(addRes.ok()).toBeTruthy();
+
+    const address = {
+      first_name: 'John', last_name: 'Doe', address_1: '123 Main St',
+      city: 'Athens', postcode: '11111', country: 'GR',
+    };
+
+    const checkoutRes = await request.post(`${baseURL}/wp-json/wc/store/v1/checkout`, {
+      headers: { Nonce: nonce },
+      data: {
+        billing_address: { ...address, email: 'test@example.com', phone: '2101234567' },
+        shipping_address: address,
+        payment_method: 'cod',
+        // Additional Checkout Fields are posted under their location key:
+        additional_fields: { 'nvm-plugin/vat-number': 'EL123456789' },
+      },
+    });
+    expect(checkoutRes.ok()).toBeTruthy();
+
+    const order = await checkoutRes.json();
+    expect(order.order_id).toBeGreaterThan(0);
+    // Assert YOUR extension's effect on the order via /wc/v3 (admin auth) here.
+  });
+
+  test('checkout rejects invalid extension data', async ({ request }) => {
+    const cartRes = await request.get(`${baseURL}/wp-json/wc/store/v1/cart`);
+    const nonce = cartRes.headers()['nonce'];
+
+    const res = await request.post(`${baseURL}/wp-json/wc/store/v1/checkout`, {
+      headers: { Nonce: nonce },
+      data: { additional_fields: { 'nvm-plugin/vat-number': 'not-a-vat' } },
+    });
+    expect(res.status()).toBe(400); // Custom validation must reject, not silently accept.
+  });
+});
+```
+
+Playwright's `request` fixture keeps cookies per test, so the cart session persists between the calls.
+
+## Accessibility Testing
+
+Scan every screen the plugin adds or modifies. Failing on serious+ violations keeps regressions out without blocking on pre-existing theme noise:
+
+```bash
+npm install @axe-core/playwright --save-dev
+```
+
+```typescript
+// tests/e2e/tests/shopper/a11y.spec.ts
+import { test, expect } from '../../fixtures/auth.fixture';
+import AxeBuilder from '@axe-core/playwright';
+
+const scan = (page: import('@playwright/test').Page) =>
+  new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+
+test('checkout has no serious a11y violations', async ({ page }) => {
+  await page.goto('/checkout/');
+  const results = await scan(page);
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
+});
+
+test('plugin settings page has no serious a11y violations', async ({ adminPage }) => {
+  await adminPage.goto('/wp-admin/admin.php?page=my-plugin-settings');
+  const results = await scan(adminPage);
+  const serious = results.violations.filter(
+    (v) => v.impact === 'serious' || v.impact === 'critical'
+  );
+  expect(serious, JSON.stringify(serious, null, 2)).toEqual([]);
+});
+```
+
+To scan only the plugin's own UI inside a noisy page, scope with `.include('#nvm-plugin-root')`.
+
+## Visual Regression (Optional)
+
+For UI-heavy screens (settings pages, checkout customizations):
+
+```typescript
+test('settings page renders correctly', async ({ adminPage }) => {
+  await adminPage.goto('/wp-admin/admin.php?page=my-plugin-settings');
+  await expect(adminPage).toHaveScreenshot('settings-page.png', {
+    fullPage: true,
+    maxDiffPixelRatio: 0.02,
+    mask: [adminPage.locator('#wpadminbar'), adminPage.locator('#footer-upgrade')],
+  });
+});
+```
+
+- Commit the `*-snapshots/` directory; update intentionally with `npx playwright test --update-snapshots`.
+- Snapshots are OS/browser-specific — generate and compare them **in CI only** (or in the same container), or the diff is rendering noise, not regressions.
+- Mask dynamic regions (admin bar, dates, order numbers).
+
+## Seeding Test Data with WP-CLI
+
+Faster than REST for bulk fixtures and store configuration — use the API fixture for per-test data, WP-CLI for environment state:
+
+```bash
+# Products.
+npx wp-env run cli wp wc product create \
+  --name="E2E Test Product" --type=simple --regular_price=19.99 --user=admin
+
+# Store configuration.
+npx wp-env run cli wp option update woocommerce_enable_guest_checkout yes
+npx wp-env run cli wp wc payment_gateway update cod --enabled=true --user=admin
+
+# Inspect state while debugging.
+npx wp-env run cli wp wc shop_order list --user=admin --format=table
+```
+
+Put idempotent seeding in a `tests/e2e/bin/seed.sh` and run it after `wp-env start` — tests must not depend on manually-created data.
+
 ## Running Tests
 
 ### NPM Scripts

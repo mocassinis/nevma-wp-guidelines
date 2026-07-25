@@ -21,6 +21,7 @@ Before starting any task, read the relevant guideline from `.claude/guidelines/`
 | PHPStan configuration | `10-static-analysis.md` |
 | Advanced patterns (DTOs, CLI) | `12-advanced-patterns.md` |
 | E2E testing (Playwright) | `14-e2e-testing.md` |
+| CI/CD, PHPCS, quality gates | `17-quality-gates.md` |
 | Before commit/PR | `11-checklist.md` |
 
 ## Core Rules (Always Apply)
@@ -71,9 +72,13 @@ Write Code → Run Unit Tests → Run E2E Tests → Security Audit → Performan
 ```
 
 **Before any commit or PR:**
-1. `composer test` — all unit tests must pass
-2. `npx playwright test` — all E2E tests must pass (if E2E tests exist)
-3. `vendor/bin/phpstan analyse` — static analysis must pass
+1. `composer cs` — PHPCS + PHPCompatibilityWP must pass
+2. `vendor/bin/phpstan analyse` — static analysis must pass
+3. `composer test` — all unit tests must pass
+4. `composer coverage:check` — coverage gate must pass (≥ 80% on services)
+5. `npx playwright test` — all E2E tests must pass (if E2E tests exist)
+
+Full gate order, CI pipeline, and release gates: `17-quality-gates.md`.
 
 ## Specialized Agents (Auto-Triggered)
 

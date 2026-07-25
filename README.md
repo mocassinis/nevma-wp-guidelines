@@ -23,7 +23,7 @@ Instead of loading 2000+ lines every time, Claude loads only what's needed:
 | Task | Lines Loaded |
 |------|--------------|
 | Writing AJAX handler | ~390 (security only) |
-| WooCommerce integration | ~570 (WooCommerce only) |
+| WooCommerce integration | ~880 (WooCommerce only) |
 | Adding caching | ~410 (performance only) |
 | New plugin setup | ~320 (workflow only) |
 
@@ -75,7 +75,7 @@ rm -rf /tmp/nevma-wp-guidelines
     ├── 02-architecture.md         # Directory structure, Plugin class
     ├── 03-modern-php.md           # PHP 8.0/8.1/8.2 features
     ├── 04-security.md             # AJAX, REST, nonces, SQL
-    ├── 05-woocommerce.md          # CRUD, HPOS, gateways, shipping, emails
+    ├── 05-woocommerce.md          # CRUD, HPOS, block checkout, gateways, emails
     ├── 06-performance.md          # Caching, Action Scheduler, WC perf
     ├── 07-javascript.md           # Vanilla JS, jQuery admin
     ├── 08-documentation.md        # PHPDoc standards
@@ -86,7 +86,8 @@ rm -rf /tmp/nevma-wp-guidelines
     ├── 13-automation-tooling.md   # PHP-Scoper, auto-fixers
     ├── 14-e2e-testing.md          # Playwright E2E for WooCommerce
     ├── 15-interactivity-api.md    # WordPress Interactivity API
-    └── 16-playground.md           # WordPress Playground CLI
+    ├── 16-playground.md           # WordPress Playground CLI
+    └── 17-quality-gates.md        # PHPCS, CI/CD pipeline, Plugin Check, QIT
 ```
 
 ## Usage
@@ -115,6 +116,7 @@ Claude will read `00-new-plugin-workflow.md` and follow the 13-step process.
 | E2E testing | `14-e2e-testing.md` |
 | Block interactivity | `15-interactivity-api.md` |
 | Local testing | `16-playground.md` |
+| CI/CD & quality gates | `17-quality-gates.md` |
 | Before commit | `11-checklist.md` |
 
 ## Mandatory Testing
@@ -123,12 +125,17 @@ Every plugin built with these guidelines enforces testing before commit:
 
 | Test Type | Tool | When |
 |-----------|------|------|
+| Code Style + PHP Compat | PHPCS + PHPCompatibilityWP | Before every commit |
 | Unit Tests | PHPUnit + Brain Monkey | After writing/modifying any business logic |
-| E2E Tests | Playwright | After completing user-facing features |
-| Static Analysis | PHPStan level 6+ | Before every commit |
+| Integration Tests | wp-phpunit + wp-env | Hook wiring, CRUD round-trips, custom tables |
+| Coverage Gate | phpunit-coverage-check | ≥ 80% on services, enforced in CI |
+| Mutation Testing | Infection | MSI ≥ 70, enforced in CI |
+| E2E Tests | Playwright (+ axe accessibility) | After completing user-facing features |
+| Static Analysis | PHPStan level 8 + strict rules | Before every commit |
+| Plugin Check / QIT | PCP + WooCommerce QIT | In CI / before release |
 
 ```
-Write Code → Unit Tests → PHPStan → E2E Tests → Security Audit → Performance Review → Commit
+Write Code → PHPCS → PHPStan → Unit Tests → Coverage Gate → E2E Tests → Security Audit → Performance Review → Commit
 ```
 
 ## Specialized Agents
@@ -148,8 +155,9 @@ Three Claude agents automatically review code:
 - WooCommerce HPOS compatibility
 - Security (sanitization, escaping, nonces, capabilities)
 - Performance (caching, Action Scheduler, query limits)
-- Testing (PHPUnit + Brain Monkey + TDD)
-- Static analysis (PHPStan level 6+)
+- Testing (PHPUnit + Brain Monkey + TDD, integration tests, coverage gates, mutation testing)
+- Static analysis (PHPStan level 8 + strict rules)
+- CI/CD quality gates (PHPCS, PHPCompatibilityWP, Plugin Check, QIT)
 - Dependency scoping (PHP-Scoper)
 - WordPress Interactivity API (data-wp-* directives)
 - WordPress Playground for local testing

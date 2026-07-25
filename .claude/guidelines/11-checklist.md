@@ -89,25 +89,38 @@
 
 | Check | Command | Verify |
 |-------|---------|--------|
+| Code Style + Compat | `composer cs` | WPCS + PHPCompatibilityWP (`testVersion 8.0-`) clean |
 | Unit Tests Run | `composer test` | All unit tests pass (exit code 0) |
 | Unit Tests Exist | — | Every service, handler, controller, enum has tests |
+| Coverage Gate | `composer coverage:check` | ≥ 80% line coverage on `src/Services/` |
+| Mutation Score | `vendor/bin/infection` | MSI ≥ 70, covered MSI ≥ 80 (CI; see `09-testing.md`) |
+| Integration Tests | `phpunit -c phpunit-integration.xml` | Hook wiring, CRUD round-trips, `$wpdb` code covered |
 | E2E Tests Run | `npm run test:e2e` | All Playwright tests pass (if E2E tests exist) |
-| E2E Tests Exist | — | Shopper flows, merchant flows, API endpoints covered |
-| PHPStan | `vendor/bin/phpstan analyse` | Level 6+ passes with no ignored errors |
+| E2E Tests Exist | — | Shopper flows, merchant flows, `/wc/v3` + Store API covered |
+| Accessibility | axe specs in E2E suite | No serious/critical violations on screens the plugin touches |
+| PHPStan | `vendor/bin/phpstan analyse` | Level 8 (new projects) passes; baseline only shrinks |
+| Plugin Check | `wp plugin check <slug>` | No ERROR-level findings |
 | Bug Fixes | — | Every bug fix has a failing test written BEFORE the fix |
 | Edge Cases | — | Zero, negative, null, empty, max, UTF-8, duplicates covered |
 | Dependencies | — | WooCommerce version check with admin notice fallback |
 
+Full gate order and CI enforcement: `17-quality-gates.md`.
+
 ### Test Execution Order
 
 ```bash
-# 1. Unit tests (fast, run first)
-composer test
+# 1. Code style + PHP compatibility (fastest)
+composer cs
 
 # 2. Static analysis
 vendor/bin/phpstan analyse
 
-# 3. E2E tests (slower, run last — ask user first)
+# 3. Unit tests + coverage gate
+composer test
+composer coverage:check
+
+# 4. Integration + E2E tests (slower, run last — ask user first)
+npx wp-env run tests-cli --env-cwd=wp-content/plugins/<slug> vendor/bin/phpunit -c phpunit-integration.xml
 npm run test:e2e
 ```
 

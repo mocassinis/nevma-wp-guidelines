@@ -27,10 +27,12 @@ Locally, run 1–4 before every commit (see `11-checklist.md`). 5–7 run in CI 
 `13-automation-tooling.md` references `phpcs.xml.dist` — this is its canonical content. `PHPCompatibilityWP` mechanically catches syntax/function usage above the declared PHP minimum (the "Features above 8.0 documented" checklist row).
 
 ```bash
-composer require --dev wp-coding-standards/wpcs:^3.1 \
+composer require --dev wp-coding-standards/wpcs:^3.4 \
     phpcompatibility/phpcompatibility-wp:^2.1 \
-    dealerdirect/phpcodesniffer-composer-installer
+    dealerdirect/phpcodesniffer-composer-installer:^1.0
 ```
+
+> **Do not force `squizlabs/php_codesniffer:^4.0`.** WPCS 3.4 requires PHPCS `^3.13.5`; PHPCS 4.x is not supported yet. Let Composer resolve PHPCS transitively.
 
 ### phpcs.xml.dist
 
@@ -50,6 +52,14 @@ composer require --dev wp-coding-standards/wpcs:^3.1 \
 	<config name="testVersion" value="8.0-"/>
 	<rule ref="PHPCompatibilityWP"/>
 
+	<!--
+	Minimum WP version the deprecation sniffs check against. Set it explicitly —
+	the WPCS default moves every release (6.7 as of WPCS 3.4) and would silently
+	change your findings on upgrade. Keep it in sync with the plugin header's
+	"Requires at least".
+	-->
+	<config name="minimum_wp_version" value="6.7"/>
+
 	<rule ref="WordPress">
 		<!-- PSR-4 class files (src/Services/Stock_Service.php), not class-*.php. -->
 		<exclude name="WordPress.Files.FileName"/>
@@ -65,11 +75,17 @@ composer require --dev wp-coding-standards/wpcs:^3.1 \
 		</properties>
 	</rule>
 
+	<!--
+	Prefixes must be at least 4 characters (WPCS 3.2+). A bare "NVM" is now
+	rejected as too short — and a rejected prefix is dropped entirely, so every
+	NVM-prefixed global would then be reported as unprefixed. Declare the
+	plugin's full namespace instead.
+	-->
 	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
 		<properties>
 			<property name="prefixes" type="array">
 				<element value="nvm_plugin"/>
-				<element value="NVM"/>
+				<element value="NVM\Plugin"/>
 			</property>
 		</properties>
 	</rule>
@@ -84,6 +100,23 @@ composer require --dev wp-coding-standards/wpcs:^3.1 \
 	}
 }
 ```
+
+### Upgrading WPCS 3.1 → 3.4
+
+Expect new findings on the first run after the bump. These are the changes that produce them — none are auto-fixable by `phpcbf`:
+
+| Change | Since | Effect |
+|--------|-------|--------|
+| Minimum prefix length raised 3 → 4 chars | 3.2 | `NVM` is rejected (`ShortPrefixPassed`) **and discarded**, cascading into `PrefixAllGlobals` errors on every global. Use the full namespace — see the ruleset above. |
+| `minimum_wp_version` default 6.2 → 6.7 | 3.2–3.4 | Many more deprecated-function/parameter warnings. Pin the value explicitly rather than inheriting the default. |
+| New `WordPress.WP.GetMetaSingle` sniff | 3.2 | Warns on `get_*_meta()` / `get_metadata*()` called with a key but no `$single` argument. Pass `$single` explicitly — the return type differs. |
+| `wp_kses_allowed_html()` dropped from escaping functions | 3.3 | Now reports `EscapeOutput.OutputNotEscaped`; it never escaped anything. |
+| `@parse_url()` no longer accepted | 3.4 | `NoSilencedErrors` flags it. `parse_url()` returns `false` on failure — check the return value. |
+| Deprecated-WP detection extended to WP 7.0 | 3.4 | New `DeprecatedFunctions` hits for anything WP removed recently. |
+| `WordPress.PHP.POSIXFunctions` deprecated | 3.3 | Remove it from any ruleset that references the sniff by name. |
+| `allow_single_item_single_line_associative_arrays` deprecated | 3.4 | Renamed to `allow_single_item_single_line_explicit_key_arrays` (behaviour identical). |
+
+Triage by sniff name — the ruleset's `<arg value="sp"/>` already prints them in `composer cs` output. Fix findings rather than excluding sniffs; if an exclusion is genuinely warranted, comment *why* in `phpcs.xml.dist`.
 
 ---
 

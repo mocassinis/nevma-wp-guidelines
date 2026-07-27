@@ -50,7 +50,7 @@ Quick reference for which guideline to load based on your task.
 | `14-e2e-testing.md` | ~870 | Playwright E2E, Store API tests, accessibility (axe), visual regression |
 | `15-interactivity-api.md` | ~280 | WordPress Interactivity API, directives, stores |
 | `16-playground.md` | ~250 | WordPress Playground CLI, blueprints, testing |
-| `17-quality-gates.md` | ~240 | PHPCS + PHPCompatibilityWP, CI pipeline, Plugin Check, QIT, release gate |
+| `17-quality-gates.md` | ~275 | PHPCS (WPCS 3.4) + PHPCompatibilityWP, CI pipeline, Plugin Check, QIT, release gate |
 
 ## Common Combinations
 
